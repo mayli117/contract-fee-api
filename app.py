@@ -1,7 +1,9 @@
 from fastapi import FastAPI,Response,UploadFile, File, Form
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", include_in_schema=False)
 def root():
     return {"message": "API is running"}
@@ -57,4 +59,5 @@ async def calculate_fees(
 if __name__ == "__main__":
 
    uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
