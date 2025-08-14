@@ -1,10 +1,13 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI,Response,UploadFile, File, Form
 from fastapi.responses import JSONResponse
 import uvicorn
 app = FastAPI()
-@app.get("/")
-def read_root():
-    return {"message": "Hello from FastAPI!"}
+@app.get("/", include_in_schema=False)
+def root():
+    return {"message": "API is running"}
+@app.head("/", include_in_schema=False)
+def root_head():
+    return Response(status_code=200)
 def parse_contract_text(text: str):
    parsed = {}
    if "家庭特選餐" in text:
@@ -54,3 +57,4 @@ async def calculate_fees(
 if __name__ == "__main__":
 
    uvicorn.run(app, host="0.0.0.0", port=8000)
+
