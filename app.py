@@ -2,6 +2,9 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 import uvicorn
 app = FastAPI()
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI!"}
 def parse_contract_text(text: str):
    parsed = {}
    if "家庭特選餐" in text:
@@ -49,4 +52,5 @@ async def calculate_fees(
    }
    return JSONResponse(content=result)
 if __name__ == "__main__":
+
    uvicorn.run(app, host="0.0.0.0", port=8000)
