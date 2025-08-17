@@ -99,3 +99,9 @@ async def calculate_fees(
 
     except ValueError:
         return JSONResponse(content={"error": "Invalid date format, use YYYY-MM-DD"}, status_code=400)
+
+
+# ✅ 啟動入口
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
