@@ -1,111 +1,61 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="zh">
 <head>
-<meta charset="utf-8">
-<title>月租差額與違約金計算器</title>
-<style>
-
-    body{font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans"; margin:20px;}
-
-    label{display:block;margin-top:10px;}
-
-    input, select{padding:6px;margin-top:4px;}
-
-    #result{white-space:pre-wrap;background:#f7f7f7;padding:10px;margin-top:12px;border-radius:6px;}
-</style>
+  <meta charset="UTF-8">
+  <title>合約費用計算器</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    form { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+    pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    button { margin-top: 10px; padding: 5px 12px; }
+  </style>
 </head>
 <body>
-<h2>月租差額與違約金計算器</h2>
-<form id="calcForm">
-<label>起日 <input type="date" name="start_date" required></label>
-<label>訖日 <input type="date" name="end_date" required></label>
-<label>週期
-<select name="cycle">
-<option value="1">週期1：每月 1日~當月最後日</option>
-<option value="2">週期2：每月6日~次月5日</option>
-<!-- 若你提供其他週期定義，可在後端新增 -->
-</select>
-</label>
-<label>新月租（若上傳合約有月租，可留空以合約為主） <input type="number" name="new_rent" min="0"></label>
-<label>舊月租（若上傳合約有月租，可留空以合約為主） <input type="number" name="old_rent" min="0"></label>
-<label>上傳合約（可選：支援純文字/CSV，系統會嘗試解析月租與違約金） <input type="file" name="contract_file"></label>
-<button type="submit">計算</button>
-</form>
-<div id="result">結果會顯示在這裡。</div>
-<script>
+  <h1>📄 合約上傳</h1>
+  <form id="uploadForm">
+    <input type="file" name="file" required />
+    <button type="submit">上傳合約</button>
+  </form>
+  <pre id="uploadResult"></pre>
 
-document.getElementById('calcForm').addEventListener('submit', async (e) => {
+  <h1>💰 計算費用</h1>
+  <form id="calcForm">
+    <label>開始日期: <input type="date" name="start_date" required /></label><br>
+    <label>結束日期: <input type="date" name="end_date" required /></label><br>
+    <label>週期: <input type="number" name="cycle" min="1" max="6" required /></label><br>
+    <label>新租金: <input type="number" name="new_rent" step="0.01" required /></label><br>
+    <label>舊租金: <input type="number" name="old_rent" step="0.01" required /></label><br>
+    <label>套餐名稱: <input type="text" name="package_name" required /></label><br>
+    <button type="submit">計算</button>
+  </form>
+  <pre id="calcResult"></pre>
 
-  e.preventDefault();
-
-  const form = e.target;
-
-  const fd = new FormData(form);
-
-  const resBox = document.getElementById('result');
-
-  resBox.textContent = "計算中…";
-
-  try {
-
-    const resp = await fetch('/calculate', { method: 'POST', body: fd });
-
-    if (!resp.ok) {
-
-      const err = await resp.json();
-
-      resBox.textContent = "錯誤: " + (err.error || JSON.stringify(err));
-
-      return;
-
-    }
-
-    const data = await resp.json();
-
-    // format the textual result
-
-    let txt = "";
-
-    txt += "1) 每月月租差額明細：\n";
-
-    if (data.per_month_results.length === 0) {
-
-      txt += "   無符合的出帳期間或重疊天數為0。\n";
-
-    } else {
-
-      data.per_month_results.forEach((r) => {
-
-        txt += `   - ${r.label} (${r.period_start} ~ ${r.period_end}) ：出帳天數 ${r.days} 天，差額 (新-舊) ${r.monthly_diff}，計算金額 ${r.amount} 元（未四捨前 ${r.amount_raw.toFixed(2)}）。\n`;
-
+  <script>
+    // 上傳合約
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      let formData = new FormData(e.target);
+      let res = await fetch("/upload_contract", {
+        method: "POST",
+        body: formData
       });
+      let data = await res.json();
+      document.getElementById("uploadResult").textContent = JSON.stringify(data, null, 2);
+    });
 
-    }
-
-    txt += `\n2) 出帳月份與天數：共 ${data.total_days} 天。\n`;
-
-    txt += `\n3) 每月差額合計（四捨後）: ${data.total_monthly_diff_sum} 元。\n`;
-
-    txt += `\n4) 違約金 / 未滿租期費用：\n   ${data.penalty_details}\n   計算後違約金：${data.penalty_amount} 元。\n`;
-
-    txt += `\n5) 總天數及全部總費用：\n   總天數：${data.total_days} 天\n   全部總費用（差額合計 + 違約金）： ${data.grand_total} 元\n`;
-
-    if (data.raw_contract_excerpt && data.raw_contract_excerpt.length > 0) {
-
-      txt += `\n--- 合約節錄 (系統擷取前2000字，用於人工確認) ---\n${data.raw_contract_excerpt}\n`;
-
-    }
-
-    resBox.textContent = txt;
-
-  } catch (err) {
-
-    document.getElementById('result').textContent = "伺服器錯誤或網路問題：" + err;
-
-  }
-
-});
-</script>
+    // 計算費用
+    document.getElementById("calcForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      let formData = new FormData(e.target);
+      let res = await fetch("/calculate_fees", {
+        method: "POST",
+        body: formData
+      });
+      let data = await res.json();
+      document.getElementById("calcResult").textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
 </body>
 </html>
+
  
