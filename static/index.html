@@ -1,56 +1,56 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <title>合約管理系統</title>
+  <meta charset="UTF-8">
+  <title>合約上傳與違約金計算</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h2 { margin-top: 30px; }
+    .result { background: #f4f4f4; padding: 10px; white-space: pre-wrap; }
+    label { display: block; margin-top: 10px; }
+    input { margin: 5px 0; padding: 5px; }
+    button { margin-top: 10px; padding: 8px 12px; }
+  </style>
 </head>
 <body>
-    <h2>📄 上傳合約檔案</h2>
-    <form id="uploadForm">
-        <input type="file" name="file" id="fileInput" required>
-        <button type="submit">上傳</button>
-    </form>
-    <pre id="uploadResult"></pre>
+  <h2>📄 上傳合約檔案</h2>
+  <form id="uploadForm">
+    <input type="file" name="file" required>
+    <button type="submit">上傳</button>
+  </form>
+  <div id="uploadResult" class="result"></div>
 
-    <h2>💰 計算違約金</h2>
-    <form id="penaltyForm">
-        <label>開始日期: <input type="date" name="start_date" required></label><br>
-        <label>結束日期: <input type="date" name="end_date" required></label><br>
-        <label>計費週期(1-6): <input type="number" name="cycle" min="1" max="6" required></label><br>
-        <label>新租金: <input type="number" step="0.01" name="new_rent" required></label><br>
-        <label>舊租金: <input type="number" step="0.01" name="old_rent" required></label><br>
-        <label>套餐名稱: <input type="text" name="plan_name" required></label><br>
-        <button type="submit">計算</button>
-    </form>
-    <pre id="penaltyResult"></pre>
+  <h2>💰 計算違約金</h2>
+  <form id="feeForm">
+    <label>開始日期: <input type="date" name="start_date" required></label>
+    <label>結束日期: <input type="date" name="end_date" required></label>
+    <label>計費週期(1-6): <input type="number" name="cycle" min="1" max="6" required></label>
+    <label>新租金: <input type="number" name="new_rent" required></label>
+    <label>舊租金: <input type="number" name="old_rent" required></label>
+    <label>套餐名稱: <input type="text" name="plan_name" required></label>
+    <button type="submit">計算</button>
+  </form>
+  <div id="feeResult" class="result"></div>
 
-    <script>
-        // 📌 上傳檔案
-        document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append("file", document.getElementById("fileInput").files[0]);
+  <script>
+    // 上傳合約
+    document.getElementById("uploadForm").onsubmit = async (e) => {
+      e.preventDefault();
+      let formData = new FormData(e.target);
+      let res = await fetch("/upload_contract", { method: "POST", body: formData });
+      let data = await res.json();
+      document.getElementById("uploadResult").innerText = JSON.stringify(data, null, 2);
+    };
 
-            const res = await fetch("/upload_contract", {
-                method: "POST",
-                body: formData
-            });
-            const data = await res.json();
-            document.getElementById("uploadResult").textContent = JSON.stringify(data, null, 2);
-        });
-
-        // 📌 計算違約金
-        document.getElementById("penaltyForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-
-            const res = await fetch("/calculate_penalty", {
-                method: "POST",
-                body: formData
-            });
-            const data = await res.json();
-            document.getElementById("penaltyResult").textContent = JSON.stringify(data, null, 2);
-        });
-    </script>
+    // 計算違約金
+    document.getElementById("feeForm").onsubmit = async (e) => {
+      e.preventDefault();
+      let formData = new FormData(e.target);
+      let res = await fetch("/calculate_fee", { method: "POST", body: formData });
+      let data = await res.json();
+      document.getElementById("feeResult").innerText = JSON.stringify(data, null, 2);
+    };
+  </script>
 </body>
 </html>
+
