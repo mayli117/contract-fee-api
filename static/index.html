@@ -1,68 +1,69 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>合約上傳與違約金計算</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h2 { margin-top: 30px; }
-    .result { background: #f4f4f4; padding: 10px; margin-top: 15px; border-radius: 5px; }
-    label { display: block; margin-top: 10px; }
-    input, button { margin-top: 5px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>合約上傳與違約金計算</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        h2 { margin-top: 30px; }
+        input, button { margin: 5px 0; padding: 5px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
 </head>
 <body>
+    <h2>上傳合約檔案</h2>
+    <input type="file" id="contractFile">
+    <button type="button" onclick="uploadContract()">上傳</button>
+    <pre id="uploadResult"></pre>
 
-  <h2>上傳合約檔案</h2>
-  <form id="uploadForm">
-    <input type="file" id="fileInput" name="file" />
-    <button type="button" onclick="uploadFile()">上傳</button>
-  </form>
-  <div id="uploadResult" class="result"></div>
+    <h2>計算違約金</h2>
+    <form id="feeForm">
+        <label>開始日期: <input type="date" name="start_date"></label><br>
+        <label>結束日期: <input type="date" name="end_date"></label><br>
+        <label>計費週期(1-6): <input type="number" name="period"></label><br>
+        <label>新租金: <input type="number" name="new_rent"></label><br>
+        <label>舊租金: <input type="number" name="old_rent"></label><br>
+        <label>套餐名稱: <input type="text" name="plan_name"></label><br>
+        <button type="submit">計算</button>
+    </form>
+    <pre id="feeResult"></pre>
 
-  <h2>計算違約金</h2>
-  <form id="penaltyForm">
-    <label>開始日期: <input type="date" name="start_date"></label>
-    <label>結束日期: <input type="date" name="end_date"></label>
-    <label>計費週期(1-6): <input type="number" name="billing_cycle"></label>
-    <label>新租金: <input type="number" name="new_rent"></label>
-    <label>舊租金: <input type="number" name="old_rent"></label>
-    <label>套餐名稱: <input type="text" name="package_name"></label>
-    <button type="button" onclick="calculatePenalty()">計算</button>
-  </form>
-  <div id="penaltyResult" class="result"></div>
+    <script>
+        // 上傳合約檔案
+        async function uploadContract() {
+            const fileInput = document.getElementById("contractFile");
+            if (fileInput.files.length === 0) {
+                alert("請先選擇檔案");
+                return;
+            }
 
-  <script>
-    // 上傳 PDF 檔案
-    async function uploadFile() {
-      const formData = new FormData();
-      const fileInput = document.getElementById("fileInput");
-      formData.append("file", fileInput.files[0]);
+            let formData = new FormData();
+            formData.append("file", fileInput.files[0]);
 
-      const response = await fetch("/upload_contract", {
-        method: "POST",
-        body: formData,
-      });
+            const response = await fetch("/upload_contract", {
+                method: "POST",
+                body: formData
+            });
 
-      const result = await response.json();
-      document.getElementById("uploadResult").innerText = JSON.stringify(result, null, 2);
-    }
+            const result = await response.json();
+            document.getElementById("uploadResult").textContent =
+                JSON.stringify(result, null, 2);
+        }
 
-    // 計算違約金
-    async function calculatePenalty() {
-      const form = document.getElementById("penaltyForm");
-      const formData = new FormData(form);
+        // 計算違約金
+        document.getElementById("feeForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            let formData = new FormData(this);
 
-      const response = await fetch("/calculate_penalty", {
-        method: "POST",
-        body: formData,
-      });
+            const response = await fetch("/calculate_fee", {
+                method: "POST",
+                body: formData
+            });
 
-      const result = await response.json();
-      document.getElementById("penaltyResult").innerText = JSON.stringify(result, null, 2);
-    }
-  </script>
-
+            const result = await response.json();
+            document.getElementById("feeResult").textContent =
+                JSON.stringify(result, null, 2);
+        });
+    </script>
 </body>
 </html>
-
