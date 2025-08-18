@@ -1,54 +1,54 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pdfminer.high_level import extract_text
-import os
+from datetime import datetime
 
-app = FastAPI(title="Contract Fee API")
+app = FastAPI()
 
-# 掛載 static 資料夾
+# 提供 index.html
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
-# ========= PDF 上傳 & 解析 =========
+# 上傳合約檔案
 @app.post("/upload_contract")
 async def upload_contract(file: UploadFile = File(...)):
     try:
-        file_path = f"uploads/{file.filename}"
-        os.makedirs("uploads", exist_ok=True)
-
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-
-        text = extract_text(file_path)
-
-        return JSONResponse({"status": "ok", "filename": file.filename, "content": text[:500]})
+        text = extract_text(file.file)   # 讀 PDF 文字
+        return JSONResponse({
+            "status": "ok",
+            "message": "檔案上傳成功",
+            "preview": text[:300]  # 預覽前 300 字
+        })
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=400)
 
 
-# ========= 計算違約金 =========
-@app.post("/calculate_penalty")
-async def calculate_penalty(
+# 計算違約金
+@app.post("/calculate_fee")
+async def calculate_fee(
     start_date: str = Form(...),
     end_date: str = Form(...),
-    billing_cycle: int = Form(...),
-    new_rent: float = Form(...),
-    old_rent: float = Form(...),
-    package_name: str = Form(...)
+    period: int = Form(...),
+    new_rent: int = Form(...),
+    old_rent: int = Form(...),
+    plan_name: str = Form(...)
 ):
     try:
-        # 簡單違約金計算邏輯 (示範用)
-        penalty = (new_rent - old_rent) * billing_cycle
+        d1 = datetime.strptime(start_date, "%Y-%m-%d")
+        d2 = datetime.strptime(end_date, "%Y-%m-%d")
+        days = (d2 - d1).days
+        weeks = days // 7
+
+        # 簡單違約金公式
+        penalty = (old_rent - new_rent) * weeks * period
+        if penalty < 0:
+            penalty = 0
 
         return JSONResponse({
             "status": "ok",
-            "start_date": start_date,
-            "end_date": end_date,
-            "billing_cycle": billing_cycle,
-            "new_rent": new_rent,
-            "old_rent": old_rent,
-            "package_name": package_name,
+            "plan": plan_name,
+            "weeks": weeks,
             "penalty": penalty
         })
     except Exception as e:
@@ -58,5 +58,6 @@ async def calculate_penalty(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+
 
 
