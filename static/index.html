@@ -1,82 +1,68 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <title>違約金計算系統</title>
+  <meta charset="UTF-8">
+  <title>合約上傳與違約金計算</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 30px; }
+    .result { background: #f4f4f4; padding: 10px; margin-top: 15px; border-radius: 5px; }
+    label { display: block; margin-top: 10px; }
+    input, button { margin-top: 5px; }
+  </style>
 </head>
 <body>
-    <h2>上傳合約檔案</h2>
-    <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <button type="submit">上傳</button>
-    </form>
-    <pre id="uploadResult"></pre>
 
-    <h2>計算違約金</h2>
-    <form id="calcForm">
-        開始日期: <input type="date" name="start_date"><br>
-        結束日期: <input type="date" name="end_date"><br>
-        新租金: <input type="number" name="new_rent"><br>
-        舊租金: <input type="number" name="old_rent"><br>
-        套餐名稱: 
-        <select name="plan_name" id="planSelect"></select><br>
-        <button type="submit">計算</button>
-    </form>
-    <pre id="calcResult"></pre>
+  <h2>上傳合約檔案</h2>
+  <form id="uploadForm">
+    <input type="file" id="fileInput" name="file" />
+    <button type="button" onclick="uploadFile()">上傳</button>
+  </form>
+  <div id="uploadResult" class="result"></div>
 
-    <script>
-        // 上傳合約
-        document.getElementById("uploadForm").onsubmit = async (e) => {
-            e.preventDefault();
-            let formData = new FormData(e.target);
-            let res = await fetch("/upload_contract", { method: "POST", body: formData });
-            let data = await res.json();
-            document.getElementById("uploadResult").innerText = JSON.stringify(data, null, 2);
+  <h2>計算違約金</h2>
+  <form id="penaltyForm">
+    <label>開始日期: <input type="date" name="start_date"></label>
+    <label>結束日期: <input type="date" name="end_date"></label>
+    <label>計費週期(1-6): <input type="number" name="billing_cycle"></label>
+    <label>新租金: <input type="number" name="new_rent"></label>
+    <label>舊租金: <input type="number" name="old_rent"></label>
+    <label>套餐名稱: <input type="text" name="package_name"></label>
+    <button type="button" onclick="calculatePenalty()">計算</button>
+  </form>
+  <div id="penaltyResult" class="result"></div>
 
-            if (data.plans) {
-                loadPlans(data.plans);
-            }
-        };
+  <script>
+    // 上傳 PDF 檔案
+    async function uploadFile() {
+      const formData = new FormData();
+      const fileInput = document.getElementById("fileInput");
+      formData.append("file", fileInput.files[0]);
 
-        // 計算違約金
-        document.getElementById("calcForm").onsubmit = async (e) => {
-            e.preventDefault();
-            let formData = new FormData(e.target);
-            let res = await fetch("/calculate_fee", { method: "POST", body: formData });
-            let result = await res.json();
+      const response = await fetch("/upload_contract", {
+        method: "POST",
+        body: formData,
+      });
 
-            if (result.error) {
-                document.getElementById("calcResult").innerText = JSON.stringify(result, null, 2);
-            } else {
-                document.getElementById("calcResult").innerText =
-                    "套餐: " + result.plan + "\n" +
-                    "使用天數: " + result.used_days + "\n" +
-                    "優惠總額: " + result.total_discount + " 元\n" +
-                    "計算公式: " + result.formula + "\n" +
-                    "違約金: " + result.penalty + " 元";
-            }
-        };
+      const result = await response.json();
+      document.getElementById("uploadResult").innerText = JSON.stringify(result, null, 2);
+    }
 
-        // 動態載入套餐
-        async function loadPlans(plans) {
-            let select = document.getElementById("planSelect");
-            select.innerHTML = "";
-            for (let plan in plans) {
-                let option = document.createElement("option");
-                option.value = plan;
-                option.textContent = plan + " (優惠總額: " + plans[plan] + "元)";
-                select.appendChild(option);
-            }
-        }
+    // 計算違約金
+    async function calculatePenalty() {
+      const form = document.getElementById("penaltyForm");
+      const formData = new FormData(form);
 
-        // 頁面載入時試著抓套餐
-        window.onload = async () => {
-            let res = await fetch("/plans");
-            let data = await res.json();
-            if (data.plans) {
-                loadPlans(data.plans);
-            }
-        };
-    </script>
+      const response = await fetch("/calculate_penalty", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      document.getElementById("penaltyResult").innerText = JSON.stringify(result, null, 2);
+    }
+  </script>
+
 </body>
 </html>
+
