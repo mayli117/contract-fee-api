@@ -1,73 +1,60 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+import os
+from pdfminer.high_level import extract_text
 from datetime import datetime
 
 app = FastAPI()
 
-# 掛載 static 資料夾
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# 前端靜態檔案
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    with open("static/index.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-
-# 📌 合約檔案上傳
+# ✅ 上傳合約檔案並解析文字
 @app.post("/upload_contract")
 async def upload_contract(file: UploadFile = File(...)):
     try:
-        content = await file.read()
-        text = content.decode("utf-8", errors="ignore")
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+
+        # 讀取 PDF 文字
+        text = extract_text(file_path)
+
         return JSONResponse({
             "status": "ok",
             "filename": file.filename,
-            "preview": text[:200]  # 只顯示前 200 字
+            "content_preview": text[:500]  # 只顯示前 500 字避免太長
         })
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=400)
 
-
-# 📌 違約金計算
-@app.post("/calculate_penalty")
-async def calculate_penalty(
+# ✅ 計算違約金 API
+@app.post("/calculate_fee")
+async def calculate_fee(
     start_date: str = Form(...),
     end_date: str = Form(...),
-    cycle: int = Form(...),       # 計費週期（1~6）
-    new_rent: float = Form(...),  # 新租金
-    old_rent: float = Form(...),  # 舊租金
-    plan_name: str = Form(...)    # 套餐名稱
+    cycle: int = Form(...),
+    new_rent: int = Form(...),
+    old_rent: int = Form(...),
+    plan_name: str = Form(...)
 ):
     try:
-        start = datetime.strptime(start_date, "%Y-%m-%d")
-        end = datetime.strptime(end_date, "%Y-%m-%d")
-        total_days = (end - start).days
+        d1 = datetime.strptime(start_date, "%Y-%m-%d")
+        d2 = datetime.strptime(end_date, "%Y-%m-%d")
+        days = (d2 - d1).days
 
-        # 📌 設定違約比例（依週期不同）
-        penalty_rates = {
-            1: 0.5,   # 第 1 週期：50%
-            2: 0.4,   # 第 2 週期：40%
-            3: 0.3,   # 第 3 週期：30%
-            4: 0.2,   # 第 4 週期：20%
-            5: 0.1,   # 第 5 週期：10%
-            6: 0.05   # 第 6 週期：5%
-        }
-        rate = penalty_rates.get(cycle, 0.05)
-
-        # 📌 計算違約金公式
-        rent_diff = new_rent - old_rent
-        penalty = rent_diff * (total_days / 30) * rate  # 以月為單位，乘上違約比例
+        # 簡單的違約金算法：差額 * 週期 * 天數 / 30
+        penalty = (new_rent - old_rent) * cycle * (days / 30)
 
         return JSONResponse({
             "status": "ok",
             "plan_name": plan_name,
-            "days": total_days,
-            "rent_diff": rent_diff,
-            "penalty_rate": rate,
+            "days": days,
             "penalty": round(penalty, 2)
         })
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=400)
-
